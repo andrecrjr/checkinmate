@@ -1,0 +1,29 @@
+### Health Check
+GET http://localhost:3000/health
+Accept: application/json
+
+###
+
+### Test /places Endpoint (Valid Request)
+GET http://localhost:3000/places?lat=-22.90980556258822&lon=-43.56153580650548&radius=250&page=1&limit=50&cache=false
+Accept: application/json
+
+###
+
+### Test /places Endpoint (Missing Parameters)
+GET http://localhost:3000/places
+Accept: application/json
+
+###
+
+### Test /places Endpoint (Invalid Parameters)
+GET http://localhost:3000/places?lat=1000&lon=2000&radius=-1&page=-5&limit=0
+Accept: application/json
+
+###
+
+### Test /places Endpoint (Excessive Radius and Limit)
+GET http://localhost:3000/places?lat=40.7128&lon=-74.0060&radius=10000&page=1&limit=200
+Accept: application/json
+
+###
