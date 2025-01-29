@@ -13,7 +13,17 @@ export interface PlaceBase {
   updatedAt: Date;
 }
 
-export interface PlaceDocument extends PlaceBase, Document {
-  metadata: any;
+export interface PlaceDocument extends Document {
+  name: string;
+  address: string;
+  coordinates: {
+    type: string;
+    coordinates: [number, number];
+  };
+  category: string;
+  source: 'overpass' | 'mongodb';
+  updatedAt: Date;
+  distance?: number;
 }
+
 export type PlaceResult = Omit<PlaceBase, 'updatedAt'> & { updatedAt: string };

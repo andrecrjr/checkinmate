@@ -1,18 +1,7 @@
 // src/models/Place.ts
 import mongoose, { Schema, Document, Model } from 'mongoose';
+import type { PlaceDocument } from '../../types';
 
-export interface PlaceDocument extends Document {
-  name: string;
-  address: string;
-  coordinates: {
-    type: string;
-    coordinates: [number, number];
-  };
-  category: string;
-  source: 'overpass' | 'mongodb';
-  updatedAt: Date;
-  distance?: number;
-}
 
 // Define the schema
 const placeSchema = new Schema<PlaceDocument>({

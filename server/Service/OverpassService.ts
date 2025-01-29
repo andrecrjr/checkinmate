@@ -15,6 +15,7 @@ class OverpassService {
     'leisure',
     'historic',
     'shop',
+    'road'
   ];
 
   private static readonly EXCLUDED_VALUES = [
@@ -25,15 +26,12 @@ class OverpassService {
 
   static async queryPlaces(lat: number, lon: number, radius: number): Promise<PlaceDocument[]> {
     try {
-      // First, try to get data from MongoDB
       const cachedData = await this.getFromMongoDB(lat, lon, radius);
       
-      // If we have recent enough data, return it
       if (this.isCacheValid(cachedData)) {
         return cachedData;
       }
 
-      // If cache is invalid or empty, query Overpass
       const query = this.buildQuery(lat, lon, radius);
       const response = await axios.post(this.BASE_URL, query, {
         timeout: this.TIMEOUT,
@@ -42,14 +40,12 @@ class OverpassService {
 
       const places = this.parseResponse(response.data);
       
-      // Store the new data in MongoDB
       await this.storeInMongoDB(places);
       
       return places;
     } catch (error) {
       console.error('Error in OverpassService:', error);
       
-      // If Overpass fails, return cached data regardless of age
       const cachedData = await this.getFromMongoDB(lat, lon, radius);
       if (cachedData.length > 0) {
         return cachedData;
@@ -117,7 +113,7 @@ class OverpassService {
         ${this.RELEVANT_TAGS.map(tag => `way(around:${radius},${lat},${lon})[${tag}];`).join('\n')}
         ${this.RELEVANT_TAGS.map(tag => `relation(around:${radius},${lat},${lon})[${tag}];`).join('\n')}
       );
-      out body;
+      out body center;
       >;
       out skel qt;
     `;
@@ -135,16 +131,20 @@ class OverpassService {
         const isExcluded = this.EXCLUDED_VALUES.some((excluded) =>
           this.RELEVANT_TAGS.some((tag) => element.tags?.[tag] === excluded)
         );
-        return hasName && !isExcluded;
+        const hasCoordinates = (element.lat && element.lon) || (element.center?.lat && element.center?.lon);
+        return hasName && !isExcluded && hasCoordinates;
       })
       .map((element: any) => {
         const category = this.RELEVANT_TAGS.find((tag) => element.tags?.[tag]) || 'other';
+        const lat = element.lat ? parseFloat(element.lat) : parseFloat(element.center.lat);
+        const lon = element.lon ? parseFloat(element.lon) : parseFloat(element.center.lon);
+        
         return {
           name: element.tags.name,
           address: element.tags['addr:street'] || 'Unknown address',
           coordinates: {
             type: 'Point',
-            coordinates: [parseFloat(element.lon), parseFloat(element.lat)],
+            coordinates: [lon, lat],
           },
           category: element.tags[category] === 'yes' ? category : element.tags[category],
           source: 'overpass',
