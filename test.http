@@ -5,7 +5,7 @@ Accept: application/json
 ###
 
 ### Test /places Endpoint (Valid Request)
-GET http://localhost:3000/api/v1/places?lat=-22.90968200167603&lon=-43.56191949837622&radius=600&page=1&limit=5&cache=false
+GET http://localhost:3000/api/v1/places?lat=-22.90968200167603&lon=-43.56191949837622&radius=600&page=1&limit=8&cache=false
 Accept: application/json
 
 ### Test all places Endpoint (Valid Request)
