@@ -140,39 +140,41 @@ export class GeoPlaceController {
     lon: number,
     radius: number,
     limit: number
-  ): Promise<PlaceDocument[]> {
-    const overpassData = await OverpassService.queryPlaces(lat, lon, radius);
+): Promise<PlaceDocument[]> {
+  const overpassData = await this.fetchAndProcessOverpassData(lat, lon, radius);
 
-    const overpassDataWithDistance = overpassData
-      .filter(place => place && place.coordinates && Array.isArray(place.coordinates.coordinates))
-      .map(place => {
-        const [placeLon, placeLat] = place.coordinates.coordinates;
-        const distance = calculateDistance(lat, lon, placeLat, placeLon);
-        return { ...place, distance };
-      });
+  const combinedData = [...mongoData, ...overpassData]
+    .filter(this.isValidPlace)
+    .filter(this.removeDuplicates)
+    .sort((a, b) => (a.distance || 0) - (b.distance || 0)) // Fixed sorting logic: nearest to farthest
+    .slice(0, limit);
 
-    return [...mongoData, ...overpassDataWithDistance]
-      .filter(place => 
-        place && 
-        place.name &&
-        place.coordinates &&
-        Array.isArray(place.coordinates.coordinates) &&
-        place.coordinates.coordinates.length === 2
-      )
-      .filter((place, index, self) => {
-        return index === self.findIndex(p => 
-          p && 
-          place &&
-          p.name === place.name &&
-          p.coordinates &&
-          place.coordinates &&
-          Array.isArray(p.coordinates.coordinates) &&
-          Array.isArray(place.coordinates.coordinates) &&
-          p.coordinates.coordinates[0] === place.coordinates.coordinates[0] &&
-          p.coordinates.coordinates[1] === place.coordinates.coordinates[1]
-        );
-      })
-      .sort((a, b) => (b.distance || 0) - (a.distance || 0))
-      .slice(0, limit);
-  }
+  return combinedData;
+}
+
+private async fetchAndProcessOverpassData(lat: number, lon: number, radius: number): Promise<PlaceDocument[]> {
+  const overpassData = await OverpassService.queryPlaces(lat, lon, radius);
+  return overpassData
+    .filter(place => place && place.coordinates && Array.isArray(place.coordinates.coordinates))
+    .map(place => {
+      const [placeLon, placeLat] = place.coordinates.coordinates;
+      const distance = calculateDistance(lat, lon, placeLat, placeLon);
+      return { ...place, distance };
+    });
+}
+
+private isValidPlace(place: PlaceDocument): string | boolean {
+  return place && place.name && place.coordinates && Array.isArray(place.coordinates.coordinates) && place.coordinates.coordinates.length === 2;
+}
+
+private removeDuplicates(place: PlaceDocument, index: number, self: PlaceDocument[]): boolean {
+  return index === self.findIndex(p => 
+    p && place && 
+    p.name === place.name && 
+    p.coordinates && place.coordinates &&
+    Array.isArray(p.coordinates.coordinates) && Array.isArray(place.coordinates.coordinates) &&
+    p.coordinates.coordinates[0] === place.coordinates.coordinates[0] &&
+    p.coordinates.coordinates[1] === place.coordinates.coordinates[1]
+  );
+}
 }

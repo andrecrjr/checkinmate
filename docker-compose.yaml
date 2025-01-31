@@ -9,10 +9,8 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-    environment:
-      - MONGODB_URI=mongodb://mongo:27017/places
-      - OVERPASS_URL=https://overpass-api.de/api/interpreter
-      - NODE_ENV=production
+    env_file:
+      - .env
     depends_on:
       - mongo
 
