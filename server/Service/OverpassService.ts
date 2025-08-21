@@ -1,8 +1,13 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import mongoose from 'mongoose';
-import type { PlaceDocument } from '../../types';
+import type { PlaceDocument, ApiError } from '../../types';
+import type { PlaceDocument as PlaceDocumentZod, CoordinateInput } from '../schemas/validation';
 import { getPlaceModel } from '../Model/Place';
 
+/**
+ * Enhanced OverpassService with improved TypeScript types and error handling
+ * Provides geospatial data from OpenStreetMap via Overpass API
+ */
 class OverpassService {
   private static readonly BASE_URL = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
   private static readonly TIMEOUT = 30000;
@@ -24,8 +29,21 @@ class OverpassService {
     'telephone',
   ];
 
+  /**
+   * Query places from Overpass API with fallback to cached data
+   * @param lat - Latitude coordinate
+   * @param lon - Longitude coordinate  
+   * @param radius - Search radius in meters
+   * @returns Promise resolving to array of place documents
+   * @throws ApiError with detailed error information
+   */
   static async queryPlaces(lat: number, lon: number, radius: number): Promise<PlaceDocument[]> {
     try {
+      // Validate input coordinates
+      if (!this.isValidCoordinate(lat, lon, radius)) {
+        throw new Error('Invalid coordinates or radius provided');
+      }
+      
       const cachedData = await this.getFromMongoDB(lat, lon, radius);
       
       if (this.isCacheValid(cachedData)) {
@@ -40,34 +58,55 @@ class OverpassService {
 
       const places = this.parseResponse(response.data);
       
-      await this.storeInMongoDB(places);
+      if (places.length > 0) {
+        await this.storeInMongoDB(places);
+      }
       
       return places;
     } catch (error) {
       console.error('Error in OverpassService:', error);
       
+      // Fallback to cached data
       const cachedData = await this.getFromMongoDB(lat, lon, radius);
       if (cachedData.length > 0) {
         return cachedData;
       }
       
-      throw new Error('Failed to fetch data from both Overpass API and cache');
+      const apiError = error as ApiError;
+      throw new Error(`Failed to fetch data: ${apiError.message || 'Unknown error'}`);
     }
   }
 
+  /**
+   * Retrieve cached places from MongoDB
+   */
   private static async getFromMongoDB(lat: number, lon: number, radius: number): Promise<PlaceDocument[]> {
-    return await this.PlaceModel.find({
-      coordinates: {
-        $nearSphere: {
-          $geometry: {
-            type: "Point",
-            coordinates: [lon, lat]
-          },
-          $maxDistance: radius
-        }
-      },
-      source: 'overpass'
-    }).exec();
+    try {
+      return await (this.PlaceModel as any).find({
+        coordinates: {
+          $nearSphere: {
+            $geometry: {
+              type: "Point",
+              coordinates: [lon, lat]
+            },
+            $maxDistance: radius
+          }
+        },
+        source: 'overpass'
+      }).exec();
+    } catch (error) {
+      console.warn('Failed to retrieve cached data from MongoDB:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Validate coordinate inputs
+   */
+  private static isValidCoordinate(lat: number, lon: number, radius: number): boolean {
+    return lat >= -90 && lat <= 90 && 
+           lon >= -180 && lon <= 180 && 
+           radius > 0 && radius <= 10000;
   }
 
   private static async storeInMongoDB(places: PlaceDocument[]): Promise<void> {
@@ -89,7 +128,7 @@ class OverpassService {
     }));
 
     if (bulkOps.length > 0) {
-      await this.PlaceModel.bulkWrite(bulkOps, { ordered: false });
+      await (this.PlaceModel as any).bulkWrite(bulkOps, { ordered: false });
     }
   }
 

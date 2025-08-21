@@ -1,9 +1,13 @@
-// src/models/Place.ts
+/**
+ * Enhanced Place model with improved TypeScript types and validation
+ * Integrates with Zod schemas for consistent validation across the application
+ */
 import mongoose, { Schema, Document, Model } from 'mongoose';
-import type { PlaceDocument } from '../../types';
+import type { PlaceDocument, PlaceModel } from '../../types';
+import { PlaceDocumentSchema, CoordinateSchema } from '../schemas/validation';
 
 
-// Define the schema
+// Enhanced schema with better validation and indexing
 const placeSchema = new Schema<PlaceDocument>({
   name: { 
     type: String, 
@@ -25,11 +29,15 @@ const placeSchema = new Schema<PlaceDocument>({
       required: true,
       validate: {
         validator: function(v: number[]) {
-          return v.length === 2 && 
-                 v[0] >= -180 && v[0] <= 180 && 
-                 v[1] >= -90 && v[1] <= 90;
+          try {
+            // Use Zod schema for validation
+            CoordinateSchema.parse(v);
+            return true;
+          } catch {
+            return false;
+          }
         },
-        message: 'Invalid coordinates'
+        message: 'Invalid coordinates: must be [longitude, latitude] within valid ranges'
       }
     }
   },
@@ -65,13 +73,18 @@ const placeSchema = new Schema<PlaceDocument>({
 placeSchema.index({ coordinates: '2dsphere' });
 placeSchema.index({ name: 1, 'coordinates.coordinates': 1, source: 1 }, { unique: true });
 
-// Model initialization function
-export const getPlaceModel = (): Model<PlaceDocument> => {
+/**
+ * Enhanced model initialization with proper typing
+ * @returns PlaceModel with extended functionality
+ */
+export const getPlaceModel = (): PlaceModel => {
   // Check if model already exists to prevent recompilation
   const modelExists = mongoose.modelNames().includes('Place');
-  return modelExists 
+  const model = modelExists 
     ? mongoose.model<PlaceDocument>('Place')
     : mongoose.model<PlaceDocument>('Place', placeSchema);
+  
+  return model as unknown as PlaceModel;
 };
 
 // Instance methods should be defined on the schema
@@ -93,26 +106,40 @@ placeSchema.methods.calculateDistance = function(lat: number, lon: number): numb
 };
 
 // Static methods
+/**
+ * Enhanced static method with better error handling and validation
+ */
 placeSchema.statics.findNearby = async function(
   lat: number, 
   lon: number, 
   radius: number,
   limit: number = 10
-) {
-  return this.aggregate([
-    {
-      $geoNear: {
-        near: { 
-          type: 'Point', 
-          coordinates: [lon, lat] 
-        },
-        distanceField: 'distance',
-        maxDistance: radius,
-        spherical: true
-      }
-    },
-    { $limit: limit }
-  ]);
+): Promise<PlaceDocument[]> {
+  try {
+    // Validate coordinates using Zod
+    CoordinateSchema.parse([lon, lat]);
+    
+    if (radius <= 0 || radius > 10000) {
+      throw new Error('Radius must be between 1 and 10000 meters');
+    }
+    
+    return await this.aggregate([
+      {
+        $geoNear: {
+          near: { 
+            type: 'Point', 
+            coordinates: [lon, lat] 
+          },
+          distanceField: 'distance',
+          maxDistance: radius,
+          spherical: true
+        }
+      },
+      { $limit: Math.min(limit, 100) }
+    ]);
+  } catch (error) {
+    throw new Error(`Failed to find nearby places: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 };
 
 // Middleware
