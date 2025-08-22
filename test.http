@@ -31,3 +31,12 @@ GET http://localhost:3000/api/v1/places?lat=-22.909682&lon=-43.564864&radius=100
 
 ### FUJI
 GET http://localhost:3000/api/v1/places?lat=35.3606&lon=138.7274&radius=400&page=1&limit=10&cache=false
+
+### EIFFEL TOWER
+GET http://localhost:3000/api/v1/places?lat=48.8584&lon=2.2945&radius=500&page=1&limit=10&cache=false
+
+### CHRIST THE REDEEMER
+GET http://localhost:3000/api/v1/places?lat=-22.9519&lon=-43.2105&radius=500&page=1&limit=10&cache=false
+
+### STATUE OF LIBERTY
+GET http://localhost:3000/api/v1/places?lat=40.6892&lon=-74.0445&radius=500&page=1&limit=10&cache=false
