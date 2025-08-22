@@ -16,15 +16,15 @@ class OverpassService {
   private static readonly CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
   private static readonly RELEVANT_TAGS = [
-    'amenity',
     'tourism',
-    'leisure',
     'historic',
+    'amenity',
+    'leisure',
     'shop',
-    'road',
     'building',
     'man_made',
-    'natural'
+    'natural',
+    'landmark'
   ];
 
   private static readonly LANDMARK_TAGS = [
@@ -49,7 +49,10 @@ class OverpassService {
     'waste_basket',
     'telephone',
     'parking',
-    'parking_space'
+    'parking_space',
+    'no',
+    'none',
+    'unknown'
   ];
 
   /**
@@ -186,49 +189,15 @@ class OverpassService {
     return `
       [out:json][timeout:${timeout}];
       (
-        // Specific landmark queries (highest priority)
-        ${this.LANDMARK_TAGS.map(tag => `node(around:${radius},${lat},${lon})[${tag}];`).join('\n')}
-        ${this.LANDMARK_TAGS.map(tag => `way(around:${radius},${lat},${lon})[${tag}];`).join('\n')}
-        ${this.LANDMARK_TAGS.map(tag => `relation(around:${radius},${lat},${lon})[${tag}];`).join('\n')}
+        // General search for named places with relevant tags
+        ${this.RELEVANT_TAGS.map(tag => `node(around:${radius},${lat},${lon})["name"][${tag}];`).join('\n')}
+        ${this.RELEVANT_TAGS.map(tag => `way(around:${radius},${lat},${lon})["name"][${tag}];`).join('\n')}
+        ${this.RELEVANT_TAGS.map(tag => `relation(around:${radius},${lat},${lon})["name"][${tag}];`).join('\n')}
         
-        // Explicit landmark search by name patterns
-        node(around:${radius},${lat},${lon})["name"~"[Ee]iffel"];
-        way(around:${radius},${lat},${lon})["name"~"[Ee]iffel"];
-        relation(around:${radius},${lat},${lon})["name"~"[Ee]iffel"];
-        node(around:${radius},${lat},${lon})["name"~"[Cc]hrist [Tt]he [Rr]edeemer"];
-        way(around:${radius},${lat},${lon})["name"~"[Cc]hrist [Tt]he [Rr]edeemer"];
-        relation(around:${radius},${lat},${lon})["name"~"[Cc]hrist [Tt]he [Rr]edeemer"];
-        node(around:${radius},${lat},${lon})["name"~"[Ss]tatue [Oo]f [Ll]iberty"];
-        way(around:${radius},${lat},${lon})["name"~"[Ss]tatue [Oo]f [Ll]iberty"];
-        relation(around:${radius},${lat},${lon})["name"~"[Ss]tatue [Oo]f [Ll]iberty"];
-        node(around:${radius},${lat},${lon})["name"~"[Tt]aj [Mm]ahal"];
-        way(around:${radius},${lat},${lon})["name"~"[Tt]aj [Mm]ahal"];
-        relation(around:${radius},${lat},${lon})["name"~"[Tt]aj [Mm]ahal"];
-        node(around:${radius},${lat},${lon})["name"~"[Mm]ount [Ff]uji"];
-        way(around:${radius},${lat},${lon})["name"~"[Mm]ount [Ff]uji"];
-        relation(around:${radius},${lat},${lon})["name"~"[Mm]ount [Ff]uji"];
-        node(around:${radius},${lat},${lon})["name"~"[Tt]ower"];
-        way(around:${radius},${lat},${lon})["name"~"[Tt]ower"];
-        relation(around:${radius},${lat},${lon})["name"~"[Tt]ower"];
-        node(around:${radius},${lat},${lon})["name"~"[Mm]onument"];
-        way(around:${radius},${lat},${lon})["name"~"[Mm]onument"];
-        relation(around:${radius},${lat},${lon})["name"~"[Mm]onument"];
-        node(around:${radius},${lat},${lon})["name"~"[Ss]tatue"];
-        way(around:${radius},${lat},${lon})["name"~"[Ss]tatue"];
-        relation(around:${radius},${lat},${lon})["name"~"[Ss]tatue"];
-        
-        // General tags for places of interest
-        ${this.RELEVANT_TAGS.map(tag => `node(around:${radius},${lat},${lon})[${tag}];`).join('\n')}
-        ${this.RELEVANT_TAGS.map(tag => `way(around:${radius},${lat},${lon})[${tag}];`).join('\n')}
-        ${this.RELEVANT_TAGS.map(tag => `relation(around:${radius},${lat},${lon})[${tag}];`).join('\n')}
-        
-        // Named places with specific tourism/historic values
-        node(around:${radius},${lat},${lon})["name"]["tourism"];
-        way(around:${radius},${lat},${lon})["name"]["tourism"];
-        relation(around:${radius},${lat},${lon})["name"]["tourism"];
-        node(around:${radius},${lat},${lon})["name"]["historic"];
-        way(around:${radius},${lat},${lon})["name"]["historic"];
-        relation(around:${radius},${lat},${lon})["name"]["historic"];
+        // Additional search for any named places in the area
+        node(around:${radius},${lat},${lon})["name"];
+        way(around:${radius},${lat},${lon})["name"];
+        relation(around:${radius},${lat},${lon})["name"];
       );
       out body center;
       >;
@@ -253,16 +222,12 @@ class OverpassService {
                element.tags?.[excluded] !== undefined;
       });
       
+      // Additional check to exclude elements with no relevant tags
+      const hasRelevantTag = this.RELEVANT_TAGS.some(tag => element.tags?.[tag] !== undefined);
+      
       const hasCoordinates = (element.lat && element.lon) || (element.center?.lat && element.center?.lon);
       
-      const shouldInclude = hasName && !isExcluded && hasCoordinates;
-      
-      if (!shouldInclude && hasName) {
-        logger.info(`Filtering out element: ${element.tags?.name} - hasName: ${!!hasName}, isExcluded: ${isExcluded}, hasCoordinates: ${!!hasCoordinates}`);
-        if (element.tags) {
-          logger.info(`  Tags: ${JSON.stringify(element.tags)}`);
-        }
-      }
+      const shouldInclude = hasName && !isExcluded && hasCoordinates && hasRelevantTag;
       
       return shouldInclude;
     });
@@ -273,30 +238,12 @@ class OverpassService {
       // Determine the most appropriate category
       let category = 'other';
       
-      // Check landmark tags first (higher priority)
-      for (const tag of this.LANDMARK_TAGS) {
-        const [key, value] = tag.split('=');
-        if (element.tags?.[key] === value) {
-          category = value !== 'yes' ? value : key;
+      // Check tags in order of priority
+      for (const tag of this.RELEVANT_TAGS) {
+        if (element.tags?.[tag]) {
+          category = element.tags[tag] === 'yes' ? tag : element.tags[tag];
           break;
         }
-      }
-      
-      // If no landmark tag found, check general tags
-      if (category === 'other') {
-        const foundTag = this.RELEVANT_TAGS.find((tag) => element.tags?.[tag]);
-        if (foundTag) {
-          category = element.tags[foundTag] === 'yes' ? foundTag : element.tags[foundTag];
-        }
-      }
-      
-      // Special case for tourism and historic tags
-      if (category === 'other' && element.tags?.tourism) {
-        category = element.tags.tourism === 'yes' ? 'tourism' : element.tags.tourism;
-      }
-      
-      if (category === 'other' && element.tags?.historic) {
-        category = element.tags.historic === 'yes' ? 'historic' : element.tags.historic;
       }
       
       const lat = element.lat ? parseFloat(element.lat) : parseFloat(element.center.lat);
@@ -314,7 +261,6 @@ class OverpassService {
         updatedAt: new Date(),
       };
       
-      logger.info(`Processing place: ${place.name} with category: ${place.category}`);
       return place;
     });
   }
