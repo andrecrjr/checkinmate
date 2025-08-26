@@ -244,14 +244,52 @@ private isValidPlace(place: MongoPlaceDocument): string | boolean {
   return place && place.name && place.coordinates && Array.isArray(place.coordinates.coordinates) && place.coordinates.coordinates.length === 2;
 }
 
-private removeDuplicates(place: MongoPlaceDocument, index: number, self: MongoPlaceDocument[]): boolean {
-  return index === self.findIndex(p => 
-    p && place && 
-    p.name === place.name && 
-    p.coordinates && place.coordinates &&
-    Array.isArray(p.coordinates.coordinates) && Array.isArray(place.coordinates.coordinates) &&
-    Math.abs(p.coordinates.coordinates[0] - place.coordinates.coordinates[0]) < 0.0001 &&
-    Math.abs(p.coordinates.coordinates[1] - place.coordinates.coordinates[1]) < 0.0001
-  );
-}
+  private removeDuplicates(place: MongoPlaceDocument, index: number, self: MongoPlaceDocument[]): boolean {
+    return index === self.findIndex(p => 
+      p && place && 
+      p.name === place.name && 
+      p.coordinates && place.coordinates &&
+      Array.isArray(p.coordinates.coordinates) && Array.isArray(place.coordinates.coordinates) &&
+      Math.abs(p.coordinates.coordinates[0] - place.coordinates.coordinates[0]) < 0.0001 &&
+      Math.abs(p.coordinates.coordinates[1] - place.coordinates.coordinates[1]) < 0.0001
+    );
+  }
+
+  /**
+   * Get a specific place by its MongoDB BSON ID
+   * @param context - Elysia context containing the ID parameter
+   */
+  public async getPlaceById(context: ElysiaContext): Promise<ApiResponse<PlaceDocument | null>> {
+    try {
+      const { id } = context.params;
+      
+      this.logger.info(`Fetching place by ID: ${id}`);
+      
+      // Validate ID format
+      if (!id || typeof id !== 'string') {
+        throw new Error('Invalid ID parameter');
+      }
+      
+      // Fetch place from MongoDB by ID
+      const place = await (this.placeModel as any).findById(id).lean();
+      
+      if (!place) {
+        this.logger.warn(`Place not found for ID: ${id}`);
+        return {
+          data: null,
+          timestamp: new Date().toISOString()
+        };
+      }
+      
+      this.logger.debug(`Successfully retrieved place: ${place.name}`);
+      
+      return {
+        data: place as PlaceDocument,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching place by ID: ${util.inspect(error)}`);
+      throw new Error('Failed to fetch place by ID');
+    }
+  }
 }

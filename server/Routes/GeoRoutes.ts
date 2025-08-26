@@ -1,4 +1,4 @@
-/**
+/** 
  * Elysia.js routes with enhanced Zod validation and type safety
  * Architectural decisions:
  * - Replaced Express Router with Elysia's native routing
@@ -120,6 +120,48 @@ export const createGeoPlaceRoutes = (
           { name: 'page', in: 'query', schema: { type: 'number', minimum: 1, default: 1 } },
           { name: 'limit', in: 'query', schema: { type: 'number', minimum: 1, maximum: 100, default: 10 } },
           { name: 'cache', in: 'query', schema: { type: 'boolean', default: false } }
+        ]
+      }
+    })
+    
+    // GET /places/:id - Get a unique place by BSON ID
+    .get('/places/:id', async ({ params, set, headers }) => {
+      try {
+        // Validate the ID parameter
+        if (!params.id || typeof params.id !== 'string') {
+          set.status = 400;
+          return {
+            error: 'Validation Error',
+            message: 'Invalid ID parameter',
+            timestamp: new Date().toISOString()
+          };
+        }
+
+        // Create context object for controller
+        const context = {
+          query: {},
+          params: { id: params.id },
+          body: {},
+          headers: headers || {},
+          set
+        };
+
+        return await controller.getPlaceById(context);
+      } catch (error: any) {
+        set.status = 500;
+        return {
+          error: 'Internal Server Error',
+          message: error.message || 'Failed to fetch place',
+          timestamp: new Date().toISOString()
+        };
+      }
+    }, {
+      detail: {
+        tags: ['Places'],
+        summary: 'Get a place by ID',
+        description: 'Retrieve a specific place by its MongoDB BSON ID',
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } }
         ]
       }
     })
