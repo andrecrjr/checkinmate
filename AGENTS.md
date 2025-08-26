@@ -5,7 +5,8 @@
 CheckinMate is a geolocation-based API service built with Elysia.js (a fast TypeScript web framework) and MongoDB. The application provides endpoints for searching places based on geographical coordinates, with data sourced from both MongoDB and the Overpass API (OpenStreetMap).
 
 ## Init Project
-- You should always run the server with the `make run` command in the terminal!
+- You should always run the server with the `make run` command in the terminal.
+- Test `test.http` in curls in terminal to easier test requests.
 
 ### Key Features
 - Geospatial search with MongoDB's 2dsphere indexing

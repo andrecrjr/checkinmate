@@ -142,11 +142,9 @@ const app = new Elysia({ name: 'CheckinMate API', prefix: '/api/v1' })
       requestId: set.headers['x-request-id']
     });
     
-    // Store start time in context for response logging
     (request as any).startTime = start;
   })
   
-  // Response logging and security headers middleware
   .onAfterHandle(({ request, set }) => {
     const startTime = (request as any).startTime || Date.now();
     const duration = Date.now() - startTime;
@@ -165,19 +163,13 @@ const app = new Elysia({ name: 'CheckinMate API', prefix: '/api/v1' })
     set.headers['X-XSS-Protection'] = '1; mode=block';
     set.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin';
   })
-  
-  // Setup routes
   .use(createGeoPlaceRoutes)
-  
-  // Root endpoint
   .get('/', () => ({
     message: 'CheckinMate API',
     version: '1.0.0',
     documentation: '/swagger',
     timestamp: new Date().toISOString()
   }))
-  
-  // Swagger documentation - must be after routes are registered
   .use(swagger({
     documentation: {
       info: {
@@ -192,7 +184,6 @@ const app = new Elysia({ name: 'CheckinMate API', prefix: '/api/v1' })
     }
   }))
 
-// Graceful shutdown handling
 const gracefulShutdown = async (signal: string) => {
   logger.info(`🛑 Received ${signal}, starting graceful shutdown...`);
   

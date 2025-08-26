@@ -170,23 +170,37 @@ class OverpassService {
 
   private static buildQuery(lat: number, lon: number, radius: number): string {
     const timeout = Math.floor(this.TIMEOUT / 1000);
-    return `
-      [out:json][timeout:${timeout}];
-      (
-        // General search for named places with relevant tags
-        ${this.RELEVANT_TAGS.map(tag => `node(around:${radius},${lat},${lon})["name"][${tag}];`).join('\n')}
-        ${this.RELEVANT_TAGS.map(tag => `way(around:${radius},${lat},${lon})["name"][${tag}];`).join('\n')}
-        ${this.RELEVANT_TAGS.map(tag => `relation(around:${radius},${lat},${lon})["name"][${tag}];`).join('\n')}
-        
-        // Additional search for any named places in the area
-        node(around:${radius},${lat},${lon})["name"];
-        way(around:${radius},${lat},${lon})["name"];
-        relation(around:${radius},${lat},${lon})["name"];
-      );
-      out body center;
-      >;
-      out skel qt;
-    `;
+    
+    // Build queries for elements with English names and relevant tags
+    let query = `[out:json][timeout:${timeout}];\n(\n`;
+    
+    // Add queries for nodes, ways, and relations with English names and relevant tags
+    for (const tag of this.RELEVANT_TAGS) {
+      query += `  node(around:${radius},${lat},${lon})[\"name:en\"][${tag}];\n`;
+      query += `  way(around:${radius},${lat},${lon})[\"name:en\"][${tag}];\n`;
+      query += `  relation(around:${radius},${lat},${lon})[\"name:en\"][${tag}];\n`;
+    }
+    
+    // Add queries for any elements with English names
+    query += `  node(around:${radius},${lat},${lon})[\"name:en\"];\n`;
+    query += `  way(around:${radius},${lat},${lon})[\"name:en\"];\n`;
+    query += `  relation(around:${radius},${lat},${lon})[\"name:en\"];\n`;
+    
+    // Add fallback queries for elements with default names and relevant tags
+    for (const tag of this.RELEVANT_TAGS) {
+      query += `  node(around:${radius},${lat},${lon})[\"name\"][${tag}];\n`;
+      query += `  way(around:${radius},${lat},${lon})[\"name\"][${tag}];\n`;
+      query += `  relation(around:${radius},${lat},${lon})[\"name\"][${tag}];\n`;
+    }
+    
+    // Add fallback queries for any elements with default names
+    query += `  node(around:${radius},${lat},${lon})[\"name\"];\n`;
+    query += `  way(around:${radius},${lat},${lon})[\"name\"];\n`;
+    query += `  relation(around:${radius},${lat},${lon})[\"name\"];\n`;
+    
+    query += `);\nout body center;\n>;\nout skel qt;`;
+    
+    return query;
   }
 
   private static parseResponse(data: any): PlaceDocument[] {
@@ -198,7 +212,8 @@ class OverpassService {
     logger.info(`Processing ${data.elements.length} elements from Overpass API`);
     
     const filteredElements = data.elements.filter((element: any) => {
-      const hasName = element.tags?.name;
+      // Check for English name first, then fallback to default name
+      const hasName = element.tags?.['name:en'] || element.tags?.name;
       const isExcluded = this.EXCLUDED_VALUES.some((excluded) => {
         // Check if any relevant tag has an excluded value
         return this.RELEVANT_TAGS.some((tag) => element.tags?.[tag] === excluded) ||
@@ -233,8 +248,11 @@ class OverpassService {
       const lat = element.lat ? parseFloat(element.lat) : parseFloat(element.center.lat);
       const lon = element.lon ? parseFloat(element.lon) : parseFloat(element.center.lon);
       
+      // Use English name if available, otherwise fallback to default name
+      const name = element.tags['name:en'] || element.tags.name;
+      
       const place = {
-        name: element.tags.name,
+        name: name,
         address: element.tags['addr:street'] || 'Unknown address',
         coordinates: {
           type: 'Point',
