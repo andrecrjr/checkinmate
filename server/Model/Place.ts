@@ -71,7 +71,8 @@ const placeSchema = new Schema<PlaceDocument>({
 
 // Indexes
 placeSchema.index({ coordinates: '2dsphere' });
-placeSchema.index({ name: 1, 'coordinates.coordinates': 1, source: 1 }, { unique: true });
+// Enhanced unique index to prevent duplicate places from different sources
+placeSchema.index({ name: 1, 'coordinates.coordinates.0': 1, 'coordinates.coordinates.1': 1 }, { unique: true, name: 'unique_place_name_coords' });
 
 /**
  * Enhanced model initialization with proper typing

@@ -15,12 +15,10 @@ GET http://localhost:3000/api/v1/places
 Accept: application/json
 
 ###
-
 ### Test /places Endpoint (Invalid Parameters)
 GET http://localhost:3000/api/v1/places?lat=1000&lon=2000&radius=-1&page=-5&limit=0
 Accept: application/json
 
-###
 
 ### Test /places Endpoint (Excessive Radius and Limit)
 GET http://localhost:3000/api/v1/places?lat=40.7128&lon=-74.0060&radius=10000&page=1&limit=200
@@ -42,5 +40,5 @@ GET http://localhost:3000/api/v1/places?lat=-22.9519&lon=-43.2105&radius=500&pag
 GET http://localhost:3000/api/v1/places?lat=40.6892&lon=-74.0445&radius=500&page=1&limit=10&cache=false
 
 ### Buda de ibiraçu
-http://localhost:3000/api/v1/places?lat=-19.8655258&lon=-40.3849888&radius=400&page=1&limit=10&cache=false
+GET http://localhost:3000/api/v1/places?lat=-19.8655258&lon=-40.3849888&radius=400&page=1&limit=10&cache=false
 

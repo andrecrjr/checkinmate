@@ -27,23 +27,6 @@ class OverpassService {
     'landmark'
   ];
 
-  private static readonly LANDMARK_TAGS = [
-    'tourism=attraction',
-    'historic=monument',
-    'historic=memorial',
-    'historic=building',
-    'landmark=yes',
-    'tower=yes',
-    'building=tower',
-    'natural=peak',
-    'natural=volcano',
-    'man_made=tower',
-    'man_made=obelisk',
-    'man_made=monument',
-    'building=church',
-    'building=cathedral'
-  ];
-
   private static readonly EXCLUDED_VALUES = [
     'bench',
     'waste_basket',
@@ -151,12 +134,13 @@ class OverpassService {
         updateOne: {
           filter: {
             name: place.name,
-            'coordinates.coordinates': place.coordinates.coordinates,
-            source: 'overpass'
+            'coordinates.coordinates.0': place.coordinates.coordinates[0],
+            'coordinates.coordinates.1': place.coordinates.coordinates[1]
           },
           update: {
             $set: {
               ...place,
+              source: 'overpass', // Ensure source is always 'overpass' for Overpass data
               updatedAt: new Date()
             }
           },

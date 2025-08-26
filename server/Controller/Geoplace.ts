@@ -250,8 +250,8 @@ private removeDuplicates(place: MongoPlaceDocument, index: number, self: MongoPl
     p.name === place.name && 
     p.coordinates && place.coordinates &&
     Array.isArray(p.coordinates.coordinates) && Array.isArray(place.coordinates.coordinates) &&
-    p.coordinates.coordinates[0] === place.coordinates.coordinates[0] &&
-    p.coordinates.coordinates[1] === place.coordinates.coordinates[1]
+    Math.abs(p.coordinates.coordinates[0] - place.coordinates.coordinates[0]) < 0.0001 &&
+    Math.abs(p.coordinates.coordinates[1] - place.coordinates.coordinates[1]) < 0.0001
   );
 }
 }
