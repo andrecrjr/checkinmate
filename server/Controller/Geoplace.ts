@@ -8,6 +8,7 @@ import type {
   ElysiaContext, 
   ApiResponse, 
   PaginatedResponse,
+  PlaceDocumentApiResponse,
   PlaceModel,
   CacheService,
   LoggerService 
@@ -15,8 +16,9 @@ import type {
 import type { 
   PlaceQueryInput, 
   PaginationInput,
-  PlaceDocument 
+  PlaceDocument
 } from '../schemas/validation';
+import { Types } from 'mongoose';
 
 export class GeoPlaceController {
   private placeModel: PlaceModel;
@@ -77,7 +79,7 @@ export class GeoPlaceController {
       return {
         page,
         limit,
-        results: mongoData as PlaceDocument[],
+        results: mongoData,
         total: mongoData.length
       };
     } catch (error) {
@@ -197,17 +199,6 @@ export class GeoPlaceController {
       },
       { $skip: (page - 1) * limit },
       { $limit: limit },
-      {
-        $project: {
-          name: 1,
-          address: 1,
-          coordinates: 1,
-          category: 1,
-          source: 1,
-          updatedAt: 1,
-          distance: 1
-        }
-      }
     ]);
   }
 
@@ -234,6 +225,10 @@ private async fetchAndProcessOverpassData(lat: number, lon: number, radius: numb
   return overpassData
     .filter(place => place && place.coordinates && Array.isArray(place.coordinates.coordinates))
     .map(place => {
+      // Ensure the place has an ObjectId
+      if (!place._id) {
+        place._id = new Types.ObjectId();
+      }
       const [placeLon, placeLat] = place.coordinates.coordinates;
       const distance = calculateDistance(lat, lon, placeLat, placeLon);
       return { ...place, distance };

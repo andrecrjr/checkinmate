@@ -1,5 +1,5 @@
 import axios, { AxiosError } from 'axios';
-import mongoose from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import type { PlaceDocument, ApiError } from '../../types';
 import type { PlaceDocument as PlaceDocumentZod, CoordinateInput } from '../schemas/validation';
 import { getPlaceModel } from '../Model/Place';
@@ -251,7 +251,9 @@ class OverpassService {
       // Use English name if available, otherwise fallback to default name
       const name = element.tags['name:en'] || element.tags.name;
       
+      // Generate a new ObjectId for this place
       const place = {
+        _id: new Types.ObjectId(), // Generate a new ObjectId for the place
         name: name,
         address: element.tags['addr:street'] || 'Unknown address',
         coordinates: {

@@ -62,8 +62,8 @@ const placeSchema = new Schema<PlaceDocument>({
   toJSON: {
     transform: function(doc, ret) {
       delete ret.__v;
+      // Keep _id but also provide id for compatibility
       ret.id = ret._id;
-      delete ret._id;
       return ret;
     }
   }

@@ -1,8 +1,8 @@
 import { z } from 'zod';
+import { extendZod, zId } from '@zodyac/zod-mongoose';
 
-/**
- * Zod schemas for comprehensive input validation
- */
+// Extend Zod with Mongoose-specific types
+extendZod(z);
 
 // Base coordinate validation
 export const CoordinateSchema = z.object({
@@ -49,6 +49,7 @@ export const PlaceQuerySchema = z.object({
 
 // Place document schema for database operations
 export const PlaceDocumentSchema = z.object({
+  _id: zId().optional(), // ObjectId, optional for new documents
   name: z.string().min(1, 'Name is required'),
   address: z.string().default('Unknown address'),
   coordinates: GeoJSONPointSchema,

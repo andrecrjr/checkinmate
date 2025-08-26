@@ -1,4 +1,4 @@
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 import type {
   GeoJSONPoint,
   PlaceDocument as ZodPlaceDocument,
@@ -14,11 +14,15 @@ export type { GeoJSONPoint, CoordinateInput, PlaceQueryInput, PlaceResponse, Hea
 
 // Enhanced PlaceDocument interface that extends both Zod type and Mongoose Document
 export interface PlaceDocument extends Omit<ZodPlaceDocument, 'updatedAt'>, Document {
+  _id: Types.ObjectId; // Explicitly include ObjectId
   updatedAt: Date;
   distance?: number;
   // Mongoose-specific methods
   calculateDistance?(lat: number, lon: number): number;
 }
+
+// Type for API responses (with string IDs)
+export type PlaceDocumentApiResponse = Omit<ZodPlaceDocument, '_id'> & { _id: string };
 
 // Database model interfaces
 export interface PlaceModel {
