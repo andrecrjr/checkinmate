@@ -88,24 +88,6 @@ export const getPlaceModel = (): PlaceModel => {
   return model as unknown as PlaceModel;
 };
 
-// Instance methods should be defined on the schema
-placeSchema.methods.calculateDistance = function(lat: number, lon: number): number {
-  const [placeLon, placeLat] = this.coordinates.coordinates;
-  const R = 6371; // Earth's radius in kilometers
-
-  const dLat = (lat - placeLat) * Math.PI / 180;
-  const dLon = (lon - placeLon) * Math.PI / 180;
-  
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(placeLat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  
-  return R * c;
-};
-
 // Static methods
 /**
  * Enhanced static method with better error handling and validation

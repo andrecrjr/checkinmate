@@ -79,6 +79,7 @@ export const createGeoPlaceRoutes = (
       try {
         // Validate and transform query parameters
         const validatedQuery = PlaceQuerySchema.parse({
+          ...query,
           lat: parseFloat(query.lat as string),
           lon: parseFloat(query.lon as string),
           radius: query.radius ? parseInt(query.radius as string) : DEFAULT_RADIUS,
@@ -128,6 +129,7 @@ export const createGeoPlaceRoutes = (
       try {
         // Validate pagination parameters
         const validatedQuery = PaginationSchema.parse({
+          ...query,
           page: query.page ? parseInt(query.page as string) : 1,
           limit: query.limit ? parseInt(query.limit as string) : 10
         });

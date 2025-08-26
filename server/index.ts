@@ -64,7 +64,6 @@ export const cache = new LRUCache<string, PlaceDocument[]>({
 // MongoDB Connection with enhanced error handling
 const connectToDatabase = async (): Promise<void> => {
   try {
-    console.log(dbConfig)
     await mongoose.connect(dbConfig.uri, dbConfig.options);
     logger.info('✅ Connected to MongoDB successfully');
     
@@ -231,7 +230,6 @@ const startServer = async () => {
     }); 
     
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
     logger.error('❌ Failed to start server:', error);
     process.exit(1);
   }

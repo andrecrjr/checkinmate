@@ -1,8 +1,3 @@
-/**
- * Enhanced TypeScript types with Zod integration for better type safety
- * Architectural decision: Using Zod schemas as the single source of truth for types
- */
-
 import { Document } from 'mongoose';
 import type {
   GeoJSONPoint,
@@ -111,17 +106,3 @@ export interface ApiError extends Error {
   statusCode: number;
   details?: ValidationError[];
 }
-
-// Legacy compatibility - deprecated, use Zod types instead
-/** @deprecated Use PlaceDocument from Zod schemas instead */
-export interface PlaceBase {
-  name: string;
-  address?: string;
-  coordinates: GeoJSONPoint;
-  category?: string;
-  source: 'overpass' | 'mongodb';
-  updatedAt: Date;
-}
-
-/** @deprecated Use PlaceResponse from Zod schemas instead */
-export type PlaceResult = Omit<PlaceBase, 'updatedAt'> & { updatedAt: string };

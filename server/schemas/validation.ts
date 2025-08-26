@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 /**
  * Zod schemas for comprehensive input validation
- * Replaces Joi validation with enhanced type safety
  */
 
 // Base coordinate validation
@@ -97,19 +96,4 @@ export const validateCoordinates = (lat: number, lon: number): boolean => {
 
 export const validateRadius = (radius: number): boolean => {
   return radius >= 100 && radius <= 5000;
-};
-
-// Transform functions for query parameters
-export const transformQueryParams = (query: Record<string, any>) => {
-  const transformed = { ...query };
-  
-  // Convert string numbers to actual numbers
-  if (typeof transformed.lat === 'string') transformed.lat = parseFloat(transformed.lat);
-  if (typeof transformed.lon === 'string') transformed.lon = parseFloat(transformed.lon);
-  if (typeof transformed.radius === 'string') transformed.radius = parseInt(transformed.radius);
-  if (typeof transformed.page === 'string') transformed.page = parseInt(transformed.page);
-  if (typeof transformed.limit === 'string') transformed.limit = parseInt(transformed.limit);
-  if (typeof transformed.cache === 'string') transformed.cache = transformed.cache === 'true';
-  
-  return transformed;
 };

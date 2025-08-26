@@ -43,16 +43,16 @@ export class GeoPlaceController {
       const cacheKey = this.generateCacheKey(lat, lon, radius, page, limit);
 
       // Check cache first if enabled
-      // if (this.cache.has(cacheKey) && useCache) {
-      //   const cachedData = this.cache.get(cacheKey)!;
-      //   this.logger.debug(`Cache hit for key: ${cacheKey}`);
-      //   return {
-      //     page,
-      //     limit,
-      //     results: cachedData,
-      //     total: cachedData.length
-      //   };
-      // }
+      if (this.cache.has(cacheKey) && useCache) {
+        const cachedData = this.cache.get(cacheKey)!;
+        this.logger.debug(`Cache hit for key: ${cacheKey}`);
+        return {
+          page,
+          limit,
+          results: cachedData,
+          total: cachedData.length
+        };
+      }
 
       const mongoData = await this.getMongoDBData(lat, lon, radius, page, limit);
       this.logger.debug(`MongoDB returned ${mongoData.length} places`);

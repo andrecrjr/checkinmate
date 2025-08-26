@@ -114,7 +114,7 @@ class OverpassService {
         source: 'overpass'
       }).exec();
     } catch (error) {
-      console.warn('Failed to retrieve cached data from MongoDB:', error);
+      logger.warn('Failed to retrieve cached data from MongoDB:', error);
       return [];
     }
   }
