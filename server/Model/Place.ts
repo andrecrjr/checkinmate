@@ -106,7 +106,7 @@ placeSchema.statics.findNearby = async function(
       throw new Error('Radius must be between 1 and 10000 meters');
     }
     
-    return await this.aggregate([
+    return await this.aggregate<PlaceDocument>([
       {
         $geoNear: {
           near: { 

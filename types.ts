@@ -8,6 +8,7 @@ import type {
   HealthCheckResponse,
   ErrorResponse
 } from './server/schemas/validation';
+import type { Model } from 'mongoose';
 
 // Re-export Zod-derived types for consistency
 export type { GeoJSONPoint, CoordinateInput, PlaceQueryInput, PlaceResponse, HealthCheckResponse, ErrorResponse };
@@ -25,7 +26,7 @@ export interface PlaceDocument extends Omit<ZodPlaceDocument, 'updatedAt'>, Docu
 export type PlaceDocumentApiResponse = Omit<ZodPlaceDocument, '_id'> & { _id: string };
 
 // Database model interfaces
-export interface PlaceModel {
+export interface PlaceModel extends Model<PlaceDocument> {
   findNearby(lat: number, lon: number, radius: number, limit?: number): Promise<PlaceDocument[]>;
 }
 
@@ -109,4 +110,25 @@ export interface ValidationError {
 export interface ApiError extends Error {
   statusCode: number;
   details?: ValidationError[];
+}
+
+export interface PlaceData {
+  _id: Types.ObjectId;
+  name: string;
+  address: string;
+  coordinates: {
+    type: 'Point';
+    coordinates: [number, number];
+  };
+  category: string;
+  source: 'overpass';
+  updatedAt: Date;
+}
+
+    
+export interface OverpassElement {
+  tags?: Record<string, string>;
+  lat?: string;
+  lon?: string;
+  center?: { lat: string; lon: string };
 }

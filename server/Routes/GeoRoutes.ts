@@ -73,6 +73,25 @@ export const createGeoPlaceRoutes = (
   const controller = new GeoPlaceController(PlaceModel, cache, logger);
 
   return app.onBeforeHandle(rateLimit(API_RATE_LIMIT, RATE_LIMIT_WINDOW))
+  .onError(({ code, error, set }) => {
+    logger.error('Route error:', { code, error });
+    
+    if (code === 'VALIDATION') {
+      set.status = 400;
+      return {
+        error: 'Validation failed',
+        details: 'Invalid request parameters'
+      };
+    }
+    
+    if (code === 'NOT_FOUND') {
+      set.status = 404;
+      return { error: 'Resource not found' };
+    }
+    
+    set.status = 500;
+    return { error: 'Internal server error' };
+  })
     
     // GET /places - Search for places with comprehensive validation
     .get('/places', async ({ query, set, headers, params }) => {

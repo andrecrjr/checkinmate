@@ -1,7 +1,9 @@
 import axios, { AxiosError } from 'axios';
-import mongoose, { Types } from 'mongoose';
-import type { PlaceDocument, ApiError } from '../../types';
+import mongoose, { Types, Model } from 'mongoose';
+import type { PlaceDocument, ApiError, PlaceData, OverpassElement } from '../../types';
 import type { PlaceDocument as PlaceDocumentZod, CoordinateInput } from '../schemas/validation';
+import { LRUCache } from 'lru-cache';
+import pino from 'pino';
 import { getPlaceModel } from '../Model/Place';
 import { logger } from '../logger';
 
@@ -9,10 +11,10 @@ import { logger } from '../logger';
  * Enhanced OverpassService with improved TypeScript types and error handling
  * Provides geospatial data from OpenStreetMap via Overpass API
  */
-class OverpassService {
+export class OverpassService {
   private static readonly BASE_URL = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
   private static readonly TIMEOUT = 30000;
-  private static readonly PlaceModel = getPlaceModel();
+  private static readonly PlaceModel: Model<PlaceDocument> = getPlaceModel();
   private static readonly CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
   private static readonly RELEVANT_TAGS = [
@@ -81,7 +83,7 @@ class OverpassService {
         }
       }
       
-      return places;
+      return places as PlaceDocument[];
     } catch (error) {
       logger.error('Error in OverpassService:', error);
       
@@ -101,7 +103,7 @@ class OverpassService {
    */
   private static async getFromMongoDB(lat: number, lon: number, radius: number): Promise<PlaceDocument[]> {
     try {
-      return await (this.PlaceModel as any).find({
+      return await this.PlaceModel.find({
         coordinates: {
           $nearSphere: {
             $geometry: {
@@ -112,7 +114,7 @@ class OverpassService {
           }
         },
         source: 'overpass'
-      }).exec();
+      }).lean<PlaceDocument[]>();
     } catch (error) {
       logger.warn('Failed to retrieve cached data from MongoDB:', error);
       return [];
@@ -128,7 +130,7 @@ class OverpassService {
            radius > 0 && radius <= 10000;
   }
 
-  private static async storeInMongoDB(places: PlaceDocument[]): Promise<void> {
+  private static async storeInMongoDB(places: PlaceData[]): Promise<void> {
     try {
       const bulkOps = places.map(place => ({
         updateOne: {
@@ -149,7 +151,7 @@ class OverpassService {
       }));
 
       if (bulkOps.length > 0) {
-        await (this.PlaceModel as any).bulkWrite(bulkOps, { ordered: false });
+        await this.PlaceModel.bulkWrite(bulkOps, { ordered: false });
       }
     } catch (error) {
       logger.error('Error storing places in MongoDB:', error);
@@ -203,15 +205,16 @@ class OverpassService {
     return query;
   }
 
-  private static parseResponse(data: any): PlaceDocument[] {
+  private static parseResponse(data: { elements?: any[] }): PlaceData[] {
     if (!data.elements) {
       logger.warn('No elements found in Overpass API response');
       return [];
     }
 
     logger.info(`Processing ${data.elements.length} elements from Overpass API`);
+
     
-    const filteredElements = data.elements.filter((element: any) => {
+    const filteredElements = data.elements.filter((element: OverpassElement) => {
       // Check for English name first, then fallback to default name
       const hasName = element.tags?.['name:en'] || element.tags?.name;
       const isExcluded = this.EXCLUDED_VALUES.some((excluded) => {
@@ -233,7 +236,7 @@ class OverpassService {
     
     logger.info(`Filtered to ${filteredElements.length} elements after exclusion checks`);
 
-    return filteredElements.map((element: any) => {
+    return filteredElements.map((element: OverpassElement) => {
       // Determine the most appropriate category
       let category = 'other';
       
@@ -245,23 +248,24 @@ class OverpassService {
         }
       }
       
-      const lat = element.lat ? parseFloat(element.lat) : parseFloat(element.center.lat);
-      const lon = element.lon ? parseFloat(element.lon) : parseFloat(element.center.lon);
+      const lat = element.lat ? parseFloat(element.lat) : parseFloat(element.center?.lat || '0');
+      const lon = element.lon ? parseFloat(element.lon) : parseFloat(element.center?.lon || '0');
       
       // Use English name if available, otherwise fallback to default name
-      const name = element.tags['name:en'] || element.tags.name;
+      const tags = element.tags || {};
+      const name = tags['name:en'] || tags.name;
       
       // Generate a new ObjectId for this place
-      const place = {
+      const place: PlaceData = {
         _id: new Types.ObjectId(), // Generate a new ObjectId for the place
         name: name,
-        address: element.tags['addr:street'] || 'Unknown address',
+        address: tags['addr:street'] || 'Unknown address',
         coordinates: {
-          type: 'Point',
+          type: 'Point' as const,
           coordinates: [lon, lat],
         },
         category: category,
-        source: 'overpass',
+        source: 'overpass' as const,
         updatedAt: new Date(),
       };
       

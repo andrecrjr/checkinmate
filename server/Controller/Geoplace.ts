@@ -18,14 +18,14 @@ import type {
   PaginationInput,
   PlaceDocument
 } from '../schemas/validation';
-import { Types } from 'mongoose';
+import { Types, Model } from 'mongoose';
 
 export class GeoPlaceController {
-  private placeModel: PlaceModel;
+  private placeModel: Model<MongoPlaceDocument>;
   public cache: LRUCache<string, MongoPlaceDocument[]>;
   public logger: pino.Logger;
   
-  constructor(placeModel: PlaceModel, cache: LRUCache<string, MongoPlaceDocument[]>, logger: pino.Logger) {
+  constructor(placeModel: Model<MongoPlaceDocument>, cache: LRUCache<string, MongoPlaceDocument[]>, logger: pino.Logger) {
     this.placeModel = placeModel;
     this.cache = cache;
     this.logger = logger;
@@ -101,8 +101,8 @@ export class GeoPlaceController {
       
       const skip = (page - 1) * limit;
       const [places, total] = await Promise.all([
-        (this.placeModel as any).find().skip(skip).limit(limit).lean(),
-        (this.placeModel as any).countDocuments()
+        this.placeModel.find().skip(skip).limit(limit).lean<PlaceDocument[]>(),
+        this.placeModel.countDocuments()
       ]);
       
       this.logger.debug(`Retrieved ${places.length} places out of ${total} total`);
@@ -164,7 +164,8 @@ export class GeoPlaceController {
 
   private async checkDatabaseConnection(): Promise<boolean> {
     try {
-      await (this.placeModel as any).db.admin().ping();
+      // Simple check by attempting to count documents
+      await this.placeModel.countDocuments().limit(1);
       return true;
     } catch {
       return false;
@@ -187,7 +188,7 @@ export class GeoPlaceController {
   }
 
   private async getMongoDBData(lat: number, lon: number, radius: number, page: number, limit: number): Promise<MongoPlaceDocument[]> {
-    return await (this.placeModel as any).aggregate([
+    return await this.placeModel.aggregate<MongoPlaceDocument>([
       {
         $geoNear: {
           near: { type: 'Point', coordinates: [lon, lat] },
